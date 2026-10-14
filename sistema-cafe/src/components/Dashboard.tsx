@@ -20,6 +20,8 @@ const initialForm: FormData = {
   fecha_recoleccion: "",
 };
 
+const API_URL = "http://192.168.8.1:3000";
+
 const menuItems: {
   label: string;
   icon: typeof Home;
@@ -49,9 +51,12 @@ export default function Dashboard() {
     setErrorMsg("");
 
     try {
-      const response = await fetch("http://localhost:3000/api/cosechas", {
+      const response = await fetch(`${API_URL}/api/cosechas`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
         body: JSON.stringify({
           id_empleado: form.id_empleado,
           kilos_recolectados: Number(form.kilos_recolectados),

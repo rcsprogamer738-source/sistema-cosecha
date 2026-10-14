@@ -36,7 +36,7 @@ app.post("/api/registro", async (req, res) => {
 
     // Guardar en la base de datos
     await pool.execute(
-      "INSERT INTO usuarios (nombre, usuario, password_hash, rol) VALUES (?, ?, ?, 'admin')",
+      "INSERT INTO usuarios (nombre, usuario, password_hash, rol) VALUES (?, ?, ?, 'trabajador')",
       [nombre, usuario, hashedPassword]
     );
 
@@ -58,7 +58,7 @@ app.post("/api/login", async (req, res) => {
   try {
     // Buscar al usuario en la base de datos
     const [rows] = await pool.execute(
-      "SELECT id_usuario, nombre, password_hash, rol FROM usuarios WHERE usuario = ?",
+      "SELECT id_usuario, nombre, usuario, password_hash, rol FROM usuarios WHERE usuario = ?",
       [usuario]
     );
 
@@ -100,7 +100,31 @@ app.post("/api/login", async (req, res) => {
 // TUS RUTAS ORIGINALES DEL PROYECTO
 // ==========================================
 
-app.post("/api/cosechas", async (req, res) => {
+// ==========================================
+// MIDDLEWARE DE SEGURIDAD (Validar JWT)
+// ==========================================
+const verificarToken = (req, res, next) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader) {
+    return res.status(403).json({ mensaje: "Acceso denegado. Token requerido." });
+  }
+
+  const [scheme, token] = authHeader.split(" ");
+  if (scheme !== "Bearer" || !token) {
+    return res.status(401).json({ mensaje: "Token inválido o expirado." });
+  }
+
+  jwt.verify(token, SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).json({ mensaje: "Token inválido o expirado." });
+    }
+
+    req.usuario = decoded;
+    next();
+  });
+};
+
+app.post("/api/cosechas", verificarToken, async (req, res) => {
   const { id_empleado, kilos_recolectados, fecha_recoleccion } = req.body;
 
   try {

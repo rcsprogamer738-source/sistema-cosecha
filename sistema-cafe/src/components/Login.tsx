@@ -8,6 +8,8 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin }: LoginProps) {
+  const API_URL = "http://192.168.8.1:3000"; // Cambia esta IP según la red Wi-Fi de tu demostración
+
   // Estados para el Login
   const [usuario, setUsuario] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -29,7 +31,7 @@ export default function Login({ onLogin }: LoginProps) {
     setLoginError("");
 
     try {
-      const response = await fetch("http://192.168.8.1:3000/api/login", {
+      const response = await fetch(`${API_URL}/api/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ usuario, password })
@@ -56,7 +58,7 @@ export default function Login({ onLogin }: LoginProps) {
     setRegMensaje("");
 
     try {
-      const response = await fetch("http://192.168.8.1:3000/api/registro", {
+      const response = await fetch(`${API_URL}/api/registro`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
