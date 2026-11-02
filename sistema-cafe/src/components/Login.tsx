@@ -8,7 +8,7 @@ interface LoginProps {
 }
 
 export default function Login({ onLogin }: LoginProps) {
-  const API_URL = "http://192.168.8.1:3000"; // Cambia esta IP según la red Wi-Fi de tu demostración
+  const API_URL = "http://localhost:3000";
 
   // Estados para el Login
   const [usuario, setUsuario] = useState<string>("");

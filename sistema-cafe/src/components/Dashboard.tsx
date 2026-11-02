@@ -1,7 +1,11 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { Home, Sprout, Wallet, Coffee, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { Home, Sprout, Wallet, Coffee, CheckCircle2, AlertCircle, Loader2, Users, User, Banknote, LogOut, UserCircle } from "lucide-react";
 import Nomina from "./Nomina";
+import Cuadrillas from "./Cuadrillas";
+import Cortadores from "./Cortadores";
+import Prestamos from "./Prestamos";
+import Inicio from "../Inicio";
 
 interface FormData {
   id_empleado: string;
@@ -14,32 +18,68 @@ interface PostResponse {
   insertId: number;
 }
 
+interface Cortador {
+  id_cortador: number;
+  nombre_completo: string;
+}
+
 const initialForm: FormData = {
   id_empleado: "",
   kilos_recolectados: "",
   fecha_recoleccion: "",
 };
 
-const API_URL = "http://192.168.8.1:3000";
+const API_URL = "http://localhost:3000";
+
+type VistasPermitidas = "inicio" | "cosecha" | "nomina" | "cuadrillas" | "cortadores" | "prestamos";
 
 const menuItems: {
   label: string;
   icon: typeof Home;
-  vista?: "cosecha" | "nomina";
+  vista?: VistasPermitidas;
 }[] = [
-  { label: "Inicio", icon: Home },
+  { label: "Inicio", icon: Home, vista: "inicio" },
   { label: "Cosecha", icon: Sprout, vista: "cosecha" },
   { label: "Nómina", icon: Wallet, vista: "nomina" },
+  { label: "Cuadrillas", icon: Users, vista: "cuadrillas" },
+  { label: "Cortadores", icon: User, vista: "cortadores" },
+  { label: "Préstamos", icon: Banknote, vista: "prestamos" },
 ];
 
 export default function Dashboard() {
-  const [vistaActiva, setVistaActiva] = useState<"cosecha" | "nomina">("cosecha");
+  const [vistaActiva, setVistaActiva] = useState<VistasPermitidas>("cosecha");
   const [form, setForm] = useState<FormData>(initialForm);
   const [loading, setLoading] = useState<boolean>(false);
   const [successMsg, setSuccessMsg] = useState<string>("");
   const [errorMsg, setErrorMsg] = useState<string>("");
+  const [cortadores, setCortadores] = useState<Cortador[]>([]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (vistaActiva !== "cosecha") {
+      return;
+    }
+
+    const cargarCortadores = async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/cortadores`, {
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        });
+
+        if (!response.ok) {
+          throw new Error(`Error al cargar cortadores: ${response.status}`);
+        }
+
+        setCortadores(await response.json());
+      } catch (error) {
+        console.error("Error al cargar cortadores:", error);
+        setErrorMsg("No se pudieron cargar los trabajadores.");
+      }
+    };
+
+    cargarCortadores();
+  }, [vistaActiva]);
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setForm((prev) => ({ ...prev, [name]: value }));
   };
@@ -66,8 +106,9 @@ export default function Dashboard() {
 
       const data: PostResponse = await response.json();
       if (response.ok) {
-        setSuccessMsg(`¡Cosecha registrada con éxito! ID asignado: ${data.insertId}`);
-        setForm(initialForm);
+        setSuccessMsg(`✓ ${form.kilos_recolectados} kg registrados correctamente.`);
+        setForm((prev) => ({ ...prev, kilos_recolectados: "", id_empleado: "" }));
+        document.getElementById("id_empleado")?.focus();
       } else {
         setErrorMsg(`Error: ${data.mensaje}`);
       }
@@ -98,10 +139,10 @@ export default function Dashboard() {
                 key={label}
                 type="button"
                 onClick={() => vista && setVistaActiva(vista)}
-                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium transition border-l-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-500 ${
                   active
-                    ? "bg-amber-500/20 text-amber-300"
-                    : "text-stone-300 hover:bg-white/10 hover:text-white"
+                    ? "border-amber-500 bg-amber-500/10 text-amber-400"
+                    : "border-transparent text-stone-300 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -110,12 +151,45 @@ export default function Dashboard() {
             );
           })}
         </nav>
+
+        {/* Sección de perfil y cerrar sesión */}
+        <div className="border-t border-white/10 p-4">
+          <div className="mb-3 flex items-center gap-3 rounded-lg bg-white/5 p-3 shadow-inner">
+            <UserCircle className="h-8 w-8 text-stone-300" />
+            <div className="flex flex-col">
+              <span className="text-sm font-medium text-white">
+                {localStorage.getItem("nombreUser") || "Admin"}
+              </span>
+              <span className="text-xs text-amber-500/80">Administrador</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              localStorage.removeItem("token");
+              localStorage.removeItem("nombreUser");
+              window.location.reload();
+            }}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-red-400 transition-colors hover:bg-red-500/10 hover:text-red-300 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+          >
+            <LogOut className="h-5 w-5" />
+            Cerrar sesión
+          </button>
+        </div>
       </aside>
 
       {/* Contenido principal */}
       <main className="flex-1 overflow-y-auto p-6 sm:p-10">
-        {vistaActiva === "nomina" ? (
+        {vistaActiva === "inicio" ? (
+          <Inicio setVistaActiva={setVistaActiva} />
+        ) : vistaActiva === "nomina" ? (
           <Nomina />
+        ) : vistaActiva === "cuadrillas" ? (
+          <Cuadrillas />
+        ) : vistaActiva === "cortadores" ? (
+          <Cortadores />
+        ) : vistaActiva === "prestamos" ? (
+          <Prestamos />
         ) : (
           <div className="mx-auto w-full max-w-5xl">
             <h1 className="text-3xl font-semibold text-white">Registro de Cosecha</h1>
@@ -129,20 +203,24 @@ export default function Dashboard() {
             >
               <div>
                 <label htmlFor="id_empleado" className="mb-2 block text-base font-medium text-stone-200">
-                  ID de empleado
+                  Trabajador
                 </label>
-                <input
+                <select
                   id="id_empleado"
                   name="id_empleado"
-                  type="text"
-                  inputMode="numeric"
                   value={form.id_empleado}
                   onChange={handleChange}
                   disabled={loading}
                   required
-                  placeholder="Ej. 1024"
                   className={inputClass}
-                />
+                >
+                  <option value="" disabled>Selecciona un trabajador...</option>
+                  {cortadores.map((cortador) => (
+                    <option key={cortador.id_cortador} value={cortador.id_cortador}>
+                      {cortador.nombre_completo}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>
